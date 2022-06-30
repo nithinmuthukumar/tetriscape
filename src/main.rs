@@ -1,16 +1,14 @@
 use bevy::prelude::*;
+use tetriscape::camera::CameraPlugin;
 
 fn main() {
     App::new()
+        .insert_resource(WindowDescriptor {
+        present_mode: bevy::window::PresentMode::Fifo,
+        ..default()
+        })
         .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
+        .add_plugin(CameraPlugin)
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-    commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("icon.png"),
-        ..Default::default()
-    });
-}
