@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 use lazy_static::*;
 use rand::prelude::*;
-
-
-#[derive(Component,Copy,Clone)]
+use super::assetloader::BlockSheet;
+#[derive(Component,Clone)]
 pub struct Tetromino{
     blocks: [Vec2; 4]
 }
@@ -11,7 +10,20 @@ impl Tetromino{
     fn rand()->Tetromino{
         let mut rng = thread_rng();
         let r = rng.gen_range(0..=6);
-        return TETROMINOS[r][0];
+        return Tetromino{blocks:TETROMINOS[r][0]};
+    }
+}
+
+pub struct SpawnTetrominoEvent{
+    init_pos: Vec3,
+}
+pub struct BlocksPlugin;
+impl Plugin for BlocksPlugin{
+    fn build(&self, app: &mut App) {
+        
+        app.add_event::<SpawnTetrominoEvent>()
+            .add_startup_system(level)
+            .add_system(spawn_tetromino);
     }
 }
 
@@ -20,26 +32,41 @@ impl Tetromino{
 #[derive(Component,Default)]
 struct Block;
 
-#[derive(Bundle,Default)]
-struct BlockBundle{
-    block:Block,
-    #[bundle]
-    sprite: SpriteBundle,
-    //add physics object
+pub fn level(mut spawn_event:EventWriter<SpawnTetrominoEvent>){
+    spawn_event.send(SpawnTetrominoEvent{
+        init_pos:Vec3::ZERO
+    });
 }
 
-pub fn spawn_tetromino(cmd: &mut Commands,assets: &Res<AssetServer>, init_pos: Vec2){
-    cmd.spawn()
-        .insert(Tetromino::rand())
-        .insert(Transform{
-            translation:init_pos.extend(0.),
-            ..default()
-        })
-    .with_children(|parent| {
-        for n in 0..4{
-            parent.spawn_bundle(BlockBundle::default());
+
+pub fn spawn_tetromino(mut cmd: Commands,block_sheet: Res<BlockSheet>, mut event:EventReader<SpawnTetrominoEvent>){
+    for ev in event.iter(){
+        let tetro = Tetromino::rand();
+        let parent = cmd.spawn()
+            .insert(tetro.clone())
+            .insert(Transform{
+                translation:ev.init_pos,
+                scale: Vec3::new(1.,1.,1.),
+                ..default()
+        }).id();
+        for n in tetro.blocks{
+            let child = cmd.spawn_bundle(SpriteSheetBundle {
+                sprite: TextureAtlasSprite {
+                    index: 7,
+                    ..default()
+                },
+                texture_atlas: block_sheet.0.clone(),
+                ..default()
+            }).id();
+            // cmd.entity(parent).push_children(&[child]);
+
+
+            
         }
-    });
+        
+
+
+    }
 }
 
 
@@ -48,44 +75,44 @@ pub fn spawn_tetromino(cmd: &mut Commands,assets: &Res<AssetServer>, init_pos: V
 
 
 lazy_static! {
-    pub static ref TETROMINOS: Vec<Vec<Tetromino>> = vec![
+    pub static ref TETROMINOS: Vec<Vec<[Vec2;4]>> = vec![
         //O:
-        vec![Tetromino{blocks:[Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 1.), Vec2::new(2., 2.)]}],
+        vec![[Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 1.), Vec2::new(2., 2.)]],
         //I:
         vec![
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(3., 1.)]},
-            Tetromino{blocks:[Vec2::new(2., 0.), Vec2::new(2., 1.), Vec2::new(2., 2.), Vec2::new(2., 3.)]}
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(3., 1.)],
+            [Vec2::new(2., 0.), Vec2::new(2., 1.), Vec2::new(2., 2.), Vec2::new(2., 3.)]
         ],
         //J:
         vec![
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(2., 0.)]},
-            Tetromino{blocks:[Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(0., 0.)]},
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(0., 2.)]},
-            Tetromino{blocks:[Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 2.)]},
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(2., 0.)],
+            [Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(0., 0.)],
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(0., 2.)],
+            [Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 2.)],
         ],
         //L:
         vec![
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(0., 0.)]},
-            Tetromino{blocks:[Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(0., 2.)]},
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(2., 2.)]},
-            Tetromino{blocks:[Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 0.)]},
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(0., 0.)],
+            [Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(0., 2.)],
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(2., 2.)],
+            [Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 0.)],
         ],
         //S:
         vec![
-            Tetromino{blocks:[Vec2::new(0., 0.), Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(2., 1.)]},
-            Tetromino{blocks:[Vec2::new(1., 2.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(2., 0.)]},
+            [Vec2::new(0., 0.), Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(2., 1.)],
+            [Vec2::new(1., 2.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(2., 0.)],
         ],
         //Z:
         vec![
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(1., 0.), Vec2::new(2., 0.)]},
-            Tetromino{blocks:[Vec2::new(2., 2.), Vec2::new(2., 1.), Vec2::new(1., 1.), Vec2::new(1., 0.)]},
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(1., 0.), Vec2::new(2., 0.)],
+            [Vec2::new(2., 2.), Vec2::new(2., 1.), Vec2::new(1., 1.), Vec2::new(1., 0.)],
         ],
         //T:
         vec![
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(1., 0.)]},
-            Tetromino{blocks:[Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(0., 1.)]},
-            Tetromino{blocks:[Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(1., 2.)]},
-            Tetromino{blocks:[Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 1.)]},
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(1., 0.)],
+            [Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(0., 1.)],
+            [Vec2::new(0., 1.), Vec2::new(1., 1.), Vec2::new(2., 1.), Vec2::new(1., 2.)],
+            [Vec2::new(1., 0.), Vec2::new(1., 1.), Vec2::new(1., 2.), Vec2::new(2., 1.)],
         ],
     ];
 }
